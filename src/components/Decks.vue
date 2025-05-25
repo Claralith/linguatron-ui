@@ -1,10 +1,5 @@
 <script setup>
-import { computed, onMounted } from "vue";
-import { useRoute, useRouter } from "vue-router";
-
-const router = useRouter();
-const route = useRoute();
-import { ref } from "vue";
+import { onMounted, ref } from "vue";
 
 const decks = ref([]);
 const loading = ref(true);
@@ -31,22 +26,41 @@ onMounted(fetchDecks);
 </script>
 
 <template>
-    <div>
-        <h1>All Decks</h1>
+    <div class="max-w-4xl mx-auto mt-10">
+        <h1 class="text-3xl font-bold mb-6 text-center text-blue-600">
+            Your Decks
+        </h1>
 
-        <div v-if="loading">Loading...</div>
-        <div v-else-if="error">{{ error }}</div>
-        <div v-else-if="decks.length === 0">No decks found.</div>
+        <div v-if="loading" class="text-center text-gray-500">Loading...</div>
 
-        <ul v-else>
-            <li v-for="deck in decks" :key="deck.ID">
-                <span></span>
-                <RouterLink :to="`/deck/${deck.ID}`">{{
-                    deck.Name
-                }}</RouterLink>
-            </li>
-        </ul>
+        <div v-else-if="error" class="text-center text-red-500">
+            {{ error }}
+        </div>
+
+        <div v-else-if="decks.length === 0" class="text-center">
+            <p class="text-gray-600 mb-4">No decks found.</p>
+            <RouterLink
+                to="/createdeck"
+                class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+            >
+                Create Your First Deck
+            </RouterLink>
+        </div>
+
+        <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <RouterLink
+                v-for="deck in decks"
+                :key="deck.ID"
+                :to="`/deck/${deck.ID}`"
+                class="block border border-gray-200 rounded-lg p-4 shadow-sm bg-white hover:shadow-md hover:border-blue-400 transition"
+            >
+                <h2 class="text-lg font-semibold text-gray-800">
+                    {{ deck.Name }}
+                </h2>
+                <p class="text-sm text-gray-500 mt-1">Deck ID: {{ deck.ID }}</p>
+            </RouterLink>
+        </div>
     </div>
 </template>
 
-<style></style>
+<style scoped></style>

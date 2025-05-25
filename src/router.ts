@@ -1,4 +1,8 @@
-import { createMemoryHistory, createRouter } from "vue-router";
+import {
+  createMemoryHistory,
+  createRouter,
+  createWebHistory,
+} from "vue-router";
 
 import CreateDeck from "./components/CreateDeck.vue";
 import Decks from "./components/Decks.vue";
@@ -24,7 +28,7 @@ const routes = [
 ];
 
 const router = createRouter({
-  history: createMemoryHistory(),
+  history: createWebHistory(),
   routes,
 });
 
