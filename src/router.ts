@@ -9,12 +9,14 @@ import Decks from "./components/Decks.vue";
 import Deck from "./components/Deck.vue";
 import CardBrowser from "./components/CardBrowser.vue";
 import Session from "./components/Session.vue";
+import BatchAdd from "./components/BatchAdd.vue";
 
 const routes = [
   { path: "/createdeck", component: CreateDeck },
   { path: "/decks", component: Decks },
   { path: "/deck/:id", component: Deck },
   { path: "/deck/:id/cardbrowser", component: CardBrowser },
+  { path: "/deck/:id/batchadd", component: BatchAdd },
   {
     path: "/deck/:id/learning",
     component: Session,

@@ -65,6 +65,13 @@ onMounted(fetchDeck);
                 >
                     Browse Cards
                 </RouterLink>
+
+                <RouterLink
+                    :to="`/deck/${deck.ID}/batchadd`"
+                    class="block bg-gray-700 text-white py-3 px-4 rounded hover:bg-gray-800 transition"
+                >
+                    Batch Add Cards
+                </RouterLink>
             </div>
         </div>
     </div>
