@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted } from "vue";
 import { useRoute } from "vue-router";
+import BackToDeck from "./BackToDeck.vue";
 
 const route = useRoute();
 const deckId = route.params.id;
@@ -94,6 +95,8 @@ onMounted(fetchCards);
 </script>
 
 <template>
+    <BackToDeck :deck-id="deckId" />
+
     <div class="max-w-4xl mx-auto mt-8">
         <h1 class="text-2xl font-bold mb-4">Card Browser</h1>
 

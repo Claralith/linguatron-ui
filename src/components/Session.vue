@@ -1,6 +1,7 @@
 <script setup>
 import { onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
+import BackToDeck from "./BackToDeck.vue";
 
 const route = useRoute();
 const deckId = route.params.id;
@@ -97,6 +98,8 @@ onMounted(fetchNextCard);
 </script>
 
 <template>
+    <BackToDeck :deck-id="deckId" />
+
     <div class="p-6 max-w-xl mx-auto">
         <h1 class="text-2xl font-semibold mb-4 capitalize">
             {{ mode }} session
