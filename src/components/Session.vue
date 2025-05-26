@@ -117,6 +117,9 @@ onMounted(fetchNextCard);
                 <p class="text-xl font-semibold bg-purple-400 p-5 rounded">
                     {{ currentCard.Question }}
                 </p>
+                <p class="text-base font-light bg-purple-300 p-1 rounded">
+                    {{ currentCard.Extra }}
+                </p>
             </div>
 
             <!-- Choices -->

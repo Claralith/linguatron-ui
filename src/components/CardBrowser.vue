@@ -44,6 +44,7 @@ async function createCard() {
         cards.value.push(data);
         newCard.value.question = "";
         newCard.value.answer = "";
+        newCard.value.extra = "";
     } catch (err) {
         error.value = err.message;
     }
@@ -59,6 +60,7 @@ async function updateCard(card) {
                 body: JSON.stringify({
                     question: card.Question,
                     answer: card.Answer,
+                    extra: card.Extra,
                 }),
             },
         );
@@ -116,6 +118,12 @@ onMounted(fetchCards);
                 placeholder="Answer"
                 class="border px-3 py-2 rounded"
             />
+            <input
+                type="text"
+                v-model="newCard.extra"
+                placeholder="Extra"
+                class="border px-3 py-2 rounded"
+            />
             <button
                 type="submit"
                 class="bg-blue-500 text-white px-4 py-2 rounded md:col-span-2"
@@ -136,6 +144,7 @@ onMounted(fetchCards);
                     <th class="border p-2">ID</th>
                     <th class="border p-2">Question</th>
                     <th class="border p-2">Answer</th>
+                    <th class="border p-2">Extra</th>
                     <th class="border p-2">Actions</th>
                 </tr>
             </thead>
@@ -152,6 +161,13 @@ onMounted(fetchCards);
                     <td class="border p-2">
                         <input
                             v-model="card.Answer"
+                            @change="updateCard(card)"
+                            class="border px-2 py-1 w-full"
+                        />
+                    </td>
+                    <td class="border p-2">
+                        <input
+                            v-model="card.Extra"
                             @change="updateCard(card)"
                             class="border px-2 py-1 w-full"
                         />
