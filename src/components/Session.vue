@@ -5,6 +5,7 @@ import BackToDeck from "./BackToDeck.vue";
 
 const route = useRoute();
 const deckId = route.params.id;
+const limit = route.query.limit || 10;
 
 const props = defineProps({
     mode: {
@@ -31,7 +32,7 @@ async function startSession() {
     loading.value = true;
     try {
         const res = await fetch(
-            `http://localhost:3030/api/deck/${deckId}/${apiPrefix}`,
+            `http://localhost:3030/api/deck/${deckId}/${apiPrefix}?limit=${limit}`,
         );
         const data = await res.json();
 

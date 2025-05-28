@@ -6,6 +6,7 @@ const route = useRoute();
 const deck = ref(null);
 const loading = ref(true);
 const error = ref("");
+const cardLimit = ref(10);
 
 async function fetchDeck() {
     const id = route.params.id;
@@ -44,16 +45,39 @@ onMounted(fetchDeck);
                 {{ deck.Name }}
             </h1>
 
+            <div class="max-w-xs mx-auto mb-8">
+                <label
+                    for="cardLimit"
+                    class="block text-sm font-medium text-gray-700 mb-1"
+                >
+                    Cards per session
+                </label>
+
+                <input
+                    id="cardLimit"
+                    v-model.number="cardLimit"
+                    type="number"
+                    min="1"
+                    class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                />
+            </div>
+
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <RouterLink
-                    :to="`/deck/${deck.ID}/learning`"
+                    :to="{
+                        path: `/deck/${deck.ID}/learning`,
+                        query: { limit: cardLimit },
+                    }"
                     class="block bg-green-500 text-white py-3 px-4 rounded hover:bg-green-600 transition"
                 >
                     Start Learning
                 </RouterLink>
 
                 <RouterLink
-                    :to="`/deck/${deck.ID}/review`"
+                    :to="{
+                        path: `/deck/${deck.ID}/review`,
+                        query: { limit: cardLimit },
+                    }"
                     class="block bg-blue-500 text-white py-3 px-4 rounded hover:bg-blue-600 transition"
                 >
                     Review Cards
