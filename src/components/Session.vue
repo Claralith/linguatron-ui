@@ -1,10 +1,11 @@
 <script setup>
-import { onMounted, ref, watch } from "vue";
+import { ref, onMounted } from "vue";
 import { useRoute } from "vue-router";
 import BackToDeck from "./BackToDeck.vue";
 
 const route = useRoute();
 const deckId = route.params.id;
+
 const props = defineProps({
     mode: {
         type: String,
@@ -13,37 +14,39 @@ const props = defineProps({
     },
 });
 
+const apiPrefix = props.mode; // "learning" | "review"
+
 const deck = ref(null);
+const cards = ref([]);
+const numberOfCardsAtStart = ref(0);
 const currentCard = ref(null);
 const choices = ref([]);
-const feedback = ref(null);
-const isCorrect = ref(null);
+const awaitingNext = ref(false);
+const feedback = ref(null); //
 const done = ref(false);
 const loading = ref(true);
 const error = ref("");
-const apiPrefix = props.mode === "learning" ? "learning" : "review";
-const awaitingNext = ref(false);
 
-async function fetchNextCard() {
+async function startSession() {
     loading.value = true;
-    feedback.value = null;
-
     try {
         const res = await fetch(
             `http://localhost:3030/api/deck/${deckId}/${apiPrefix}`,
         );
         const data = await res.json();
 
-        if (data.done || data.message?.includes("No")) {
+        if (data.done) {
             done.value = true;
             return;
         }
 
         deck.value = data.deck;
-        currentCard.value = data.most_due_card || data.next_card;
-        choices.value = data.random_cards || data.choices;
+        cards.value = data.cards;
+        numberOfCardsAtStart.value = cards.value.length;
+        currentCard.value = data.current;
+        choices.value = data.choices;
     } catch (e) {
-        error.value = "Failed to load session: " + e.message;
+        error.value = e.message;
     } finally {
         loading.value = false;
     }
@@ -52,52 +55,59 @@ async function fetchNextCard() {
 async function submitAnswer(answer) {
     try {
         const res = await fetch(
-            `http://localhost:3030/api/card/${currentCard.value.ID}/${apiPrefix}`,
+            `http://localhost:3030/api/deck/${deckId}/${apiPrefix}`,
             {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ answer }),
+                body: JSON.stringify({ answer, cards: cards.value }),
             },
         );
-
         const data = await res.json();
-        isCorrect.value = data.correct;
-
-        if (!data.correct) {
-            feedback.value = {
-                correct: false,
-                userAnswer: answer,
-                correctAnswer: currentCard.value.Answer,
-                question: currentCard.value.Question,
-            };
-            awaitingNext.value = true; // pause only on wrong
-        }
 
         if (data.done) {
             done.value = true;
             return;
         }
 
-        // Load next question *immediately* if correct
-        if (data.correct) {
-            currentCard.value = data.next_card;
-            choices.value = data.choices;
+        cards.value = data.cards;
+        const wasCorrect = data.correct;
+
+        if (!wasCorrect) {
+            feedback.value = {
+                question: currentCard.value.Question,
+                userAnswer: answer,
+                correctAnswer: currentCard.value.Answer,
+            };
+            awaitingNext.value = true;
+            return;
         }
-    } catch (err) {
-        error.value = "Submission failed: " + err.message;
+
+        currentCard.value = data.current;
+        choices.value = data.choices;
+    } catch (e) {
+        error.value = e.message;
     }
 }
 
-function loadNextCard() {
-    feedback.value = null;
-    isCorrect.value = null;
+function continueAfterWrong() {
     awaitingNext.value = false;
+    feedback.value = null;
+
+    if (cards.value.length === 0) {
+        done.value = true;
+        return;
+    }
 }
 
-onMounted(fetchNextCard);
+onMounted(startSession);
 </script>
 
 <template>
+    <div>
+        <h5>Total cards: {{ numberOfCardsAtStart }}</h5>
+        <h5>Cards left: {{ cards.length }}</h5>
+    </div>
+
     <BackToDeck :deck-id="deckId" />
 
     <div class="p-6 max-w-xl mx-auto">
@@ -105,24 +115,24 @@ onMounted(fetchNextCard);
             {{ mode }} session
         </h1>
 
-        <div v-if="loading" class="text-gray-500">Loading...</div>
-        <div v-else-if="done" class="text-green-600 text-xl">
-            🎉 You're done! No more {{ mode }} cards for now.
-        </div>
+        <div v-if="loading" class="text-gray-500">loading…</div>
+        <div v-else-if="done" class="text-green-600 text-xl">🎉 finished!</div>
         <div v-else-if="error" class="text-red-600">{{ error }}</div>
 
         <div v-else>
-            <div class="mb-4" v-if="!awaitingNext">
-                <p class="text-lg font-medium mb-2">Question:</p>
+            <div v-if="!awaitingNext" class="mb-4">
+                <p class="text-lg mb-2">Question:</p>
                 <p class="text-xl font-semibold bg-purple-400 p-5 rounded">
                     {{ currentCard.Question }}
                 </p>
-                <p class="text-base font-light bg-purple-300 p-1 rounded">
+                <p
+                    v-if="currentCard.Extra"
+                    class="bg-purple-300 p-2 rounded text-sm"
+                >
                     {{ currentCard.Extra }}
                 </p>
             </div>
 
-            <!-- Choices -->
             <div
                 v-if="!awaitingNext"
                 class="grid grid-cols-1 sm:grid-cols-2 gap-4"
@@ -131,27 +141,23 @@ onMounted(fetchNextCard);
                     v-for="choice in choices"
                     :key="choice.ID"
                     @click="submitAnswer(choice.Answer)"
-                    class="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-700"
+                    class="bg-purple-500 hover:bg-purple-700 text-white px-4 py-2 rounded"
                 >
                     {{ choice.Answer }}
                 </button>
             </div>
 
-            <!-- Feedback only shows when awaitingNext and incorrect -->
-            <div
-                v-if="feedback && awaitingNext && !feedback.correct"
-                class="mt-6 border-t pt-4"
-            >
-                <p class="text-red-600 font-semibold">Incorrect answer.</p>
+            <div v-if="awaitingNext" class="mt-6 border-t pt-4">
+                <p class="text-red-600 font-semibold">Incorrect.</p>
                 <p>Question: {{ feedback.question }}</p>
                 <p>Your answer: {{ feedback.userAnswer }}</p>
                 <p>Correct answer: {{ feedback.correctAnswer }}</p>
 
                 <button
-                    @click="loadNextCard"
-                    class="mt-3 bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-800"
+                    @click="continueAfterWrong"
+                    class="mt-3 bg-gray-700 hover:bg-gray-800 text-white px-4 py-2 rounded"
                 >
-                    Next
+                    next
                 </button>
             </div>
         </div>
