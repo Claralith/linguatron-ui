@@ -7,12 +7,14 @@ const route = useRoute();
 const deckId = route.params.id;
 
 const cards = ref([]);
-const newCard = ref({ question: "", answer: "" });
+const newCard = ref({ question: "", answer: "", extra: "" });
 const error = ref("");
 const loading = ref(true);
+const duplicateQuestionError = ref("");
 
 async function fetchCards() {
     loading.value = true;
+    error.value = "";
     try {
         const res = await fetch(
             `http://localhost:3030/api/deck/${deckId}/cards`,
@@ -24,6 +26,26 @@ async function fetchCards() {
         error.value = err.message;
     } finally {
         loading.value = false;
+    }
+}
+
+function checkDuplicateQuestion() {
+    const questionVal = newCard.value.question;
+    if (!questionVal || !questionVal.trim()) {
+        duplicateQuestionError.value = "";
+        return;
+    }
+    const trimmedQuestion = questionVal.trim().toLowerCase();
+    const isDuplicate = cards.value.some(
+        (card) =>
+            card.Question && card.Question.toLowerCase() === trimmedQuestion,
+    );
+
+    if (isDuplicate) {
+        duplicateQuestionError.value =
+            "This question already exists in the deck.";
+    } else {
+        duplicateQuestionError.value = "";
     }
 }
 
@@ -45,12 +67,14 @@ async function createCard() {
         newCard.value.question = "";
         newCard.value.answer = "";
         newCard.value.extra = "";
+        duplicateQuestionError.value = "";
     } catch (err) {
         error.value = err.message;
     }
 }
 
 async function updateCard(card) {
+    error.value = "";
     try {
         const res = await fetch(
             `http://localhost:3030/api/card/${card.ID}/edit`,
@@ -76,6 +100,7 @@ async function updateCard(card) {
 
 async function deleteCard(cardId) {
     if (!confirm("Are you sure you want to delete this card?")) return;
+    error.value = "";
 
     try {
         const res = await fetch(
@@ -107,27 +132,56 @@ onMounted(fetchCards);
             @submit.prevent="createCard"
             class="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4"
         >
-            <input
-                type="text"
-                v-model="newCard.question"
-                placeholder="Question"
-                class="border px-3 py-2 rounded"
-            />
+            <!-- Question Input with Duplicate Check -->
+            <div>
+                <!-- Wrapper for question input and its error message -->
+                <input
+                    type="text"
+                    v-model="newCard.question"
+                    placeholder="Question"
+                    class="border px-3 py-2 rounded w-full"
+                    @blur="checkDuplicateQuestion"
+                    aria-describedby="question-duplicate-error"
+                />
+                <p
+                    v-if="duplicateQuestionError"
+                    id="question-duplicate-error"
+                    class="text-sm text-red-500 mt-1"
+                >
+                    {{ duplicateQuestionError }}
+                </p>
+            </div>
+
+            <!-- Answer Input -->
             <input
                 type="text"
                 v-model="newCard.answer"
                 placeholder="Answer"
-                class="border px-3 py-2 rounded"
+                class="border px-3 py-2 rounded w-full"
             />
+
+            <!-- Extra Input -->
             <input
                 type="text"
                 v-model="newCard.extra"
                 placeholder="Extra"
-                class="border px-3 py-2 rounded"
+                class="border px-3 py-2 rounded w-full"
             />
+
             <button
                 type="submit"
                 class="bg-blue-500 text-white px-4 py-2 rounded md:col-span-2"
+                :disabled="
+                    !!duplicateQuestionError ||
+                    !newCard.question.trim() ||
+                    !newCard.answer.trim()
+                "
+                :class="{
+                    'opacity-50 cursor-not-allowed':
+                        !!duplicateQuestionError ||
+                        !newCard.question.trim() ||
+                        !newCard.answer.trim(),
+                }"
             >
                 Create Card
             </button>
