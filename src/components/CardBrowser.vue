@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import { useRoute } from "vue-router";
 import BackToDeck from "./BackToDeck.vue";
 
@@ -11,6 +11,10 @@ const newCard = ref({ question: "", answer: "", extra: "" });
 const error = ref("");
 const loading = ref(true);
 const duplicateQuestionError = ref("");
+
+// --- Sorting State ---
+const sortKey = ref("ID"); // Default sort key
+const sortOrder = ref("asc"); // Default sort order ('asc' or 'desc')
 
 async function fetchCards() {
     loading.value = true;
@@ -50,6 +54,14 @@ function checkDuplicateQuestion() {
 }
 
 async function createCard() {
+    checkDuplicateQuestion();
+    if (duplicateQuestionError.value) return;
+    if (!newCard.value.question.trim() || !newCard.value.answer.trim()) {
+        error.value = "Question and Answer fields cannot be empty.";
+        return;
+    }
+    error.value = "";
+
     try {
         const res = await fetch(
             `http://localhost:3030/api/deck/${deckId}/createcard`,
@@ -110,11 +122,53 @@ async function deleteCard(cardId) {
             },
         );
 
-        if (!res.ok) throw new Error("Failed to delete card");
+        if (!res.ok) {
+            let errorMsg = "Failed to delete card";
+            try {
+                const data = await res.json();
+                if (data.error) errorMsg = data.error;
+            } catch (e) {
+                /* ignore */
+            }
+            throw new Error(errorMsg);
+        }
 
         cards.value = cards.value.filter((c) => c.ID !== cardId);
     } catch (err) {
         error.value = err.message;
+    }
+}
+
+// --- Computed property for sorted cards ---
+const sortedCards = computed(() => {
+    if (!cards.value) return [];
+    const sorted = [...cards.value];
+    const key = sortKey.value;
+
+    sorted.sort((a, b) => {
+        let valA = a[key];
+        let valB = b[key];
+
+        if (key === "ID") {
+            return sortOrder.value === "asc" ? valA - valB : valB - valA;
+        }
+
+        valA = (valA || "").toString().toLowerCase();
+        valB = (valB || "").toString().toLowerCase();
+
+        if (valA < valB) return sortOrder.value === "asc" ? -1 : 1;
+        if (valA > valB) return sortOrder.value === "asc" ? 1 : -1;
+        return 0;
+    });
+    return sorted;
+});
+
+function sortBy(key) {
+    if (sortKey.value === key) {
+        sortOrder.value = sortOrder.value === "asc" ? "desc" : "asc";
+    } else {
+        sortKey.value = key;
+        sortOrder.value = "asc";
     }
 }
 
@@ -126,15 +180,13 @@ onMounted(fetchCards);
 
     <div class="max-w-4xl mx-auto mt-8">
         <h1 class="text-2xl font-bold mb-4">Card Browser</h1>
-        <p>Number of cards: {{ cards.length }}</p>
+        <p class="mb-2">Number of cards: {{ cards.length }}</p>
 
         <form
             @submit.prevent="createCard"
             class="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4"
         >
-            <!-- Question Input with Duplicate Check -->
             <div>
-                <!-- Wrapper for question input and its error message -->
                 <input
                     type="text"
                     v-model="newCard.question"
@@ -152,7 +204,6 @@ onMounted(fetchCards);
                 </p>
             </div>
 
-            <!-- Answer Input -->
             <input
                 type="text"
                 v-model="newCard.answer"
@@ -160,7 +211,6 @@ onMounted(fetchCards);
                 class="border px-3 py-2 rounded w-full"
             />
 
-            <!-- Extra Input -->
             <input
                 type="text"
                 v-model="newCard.extra"
@@ -188,7 +238,12 @@ onMounted(fetchCards);
         </form>
 
         <div v-if="loading">Loading...</div>
-        <div v-if="error" class="text-red-500">{{ error }}</div>
+        <div
+            v-if="error && !loading"
+            class="text-red-500 mb-4 p-3 border border-red-300 bg-red-50 rounded"
+        >
+            {{ error }}
+        </div>
 
         <table
             v-if="!loading && cards.length > 0"
@@ -196,15 +251,48 @@ onMounted(fetchCards);
         >
             <thead>
                 <tr class="bg-gray-200">
-                    <th class="border p-2">ID</th>
-                    <th class="border p-2">Question</th>
-                    <th class="border p-2">Answer</th>
-                    <th class="border p-2">Extra</th>
+                    <th
+                        class="border p-2 cursor-pointer hover:bg-gray-300"
+                        @click="sortBy('ID')"
+                    >
+                        ID
+                        <span v-if="sortKey === 'ID'">{{
+                            sortOrder === "asc" ? "▲" : "▼"
+                        }}</span>
+                    </th>
+                    <th
+                        class="border p-2 cursor-pointer hover:bg-gray-300"
+                        @click="sortBy('Question')"
+                    >
+                        Question
+                        <span v-if="sortKey === 'Question'">{{
+                            sortOrder === "asc" ? "▲" : "▼"
+                        }}</span>
+                    </th>
+                    <th
+                        class="border p-2 cursor-pointer hover:bg-gray-300"
+                        @click="sortBy('Answer')"
+                    >
+                        Answer
+                        <span v-if="sortKey === 'Answer'">{{
+                            sortOrder === "asc" ? "▲" : "▼"
+                        }}</span>
+                    </th>
+                    <th
+                        class="border p-2 cursor-pointer hover:bg-gray-300"
+                        @click="sortBy('Extra')"
+                    >
+                        Extra
+                        <span v-if="sortKey === 'Extra'">{{
+                            sortOrder === "asc" ? "▲" : "▼"
+                        }}</span>
+                    </th>
                     <th class="border p-2">Actions</th>
                 </tr>
             </thead>
             <tbody>
-                <tr v-for="card in cards" :key="card.ID">
+                <!-- Iterate over sortedCards instead of cards -->
+                <tr v-for="card in sortedCards" :key="card.ID">
                     <td class="border p-2">{{ card.ID }}</td>
                     <td class="border p-2">
                         <input
@@ -238,5 +326,11 @@ onMounted(fetchCards);
                 </tr>
             </tbody>
         </table>
+        <div
+            v-if="!loading && cards.length === 0 && !error"
+            class="text-gray-600"
+        >
+            No cards in this deck yet. You can add one using the form above.
+        </div>
     </div>
 </template>
